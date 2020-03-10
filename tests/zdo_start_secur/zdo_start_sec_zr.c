@@ -114,6 +114,12 @@ MAIN()
   MAIN_RETURN(0);
 }
 
+typedef struct names
+{
+  zb_uint8_t name_first;
+  zb_uint8_t name_second; 
+} zb_names_struct_t;
+
 
 void zb_zdo_startup_complete(zb_uint8_t param) ZB_CALLBACK
 {
@@ -124,7 +130,13 @@ void zb_zdo_startup_complete(zb_uint8_t param) ZB_CALLBACK
 #ifndef APS_RETRANSMIT_TEST
     zb_af_set_data_indication(data_indication);
 #endif
-    send_data((zb_buf_t *)ZB_BUF_FROM_REF(param));
+
+    zb_buf_t *bdu = (zb_buf_t *)ZB_BUF_FROM_REF(param);
+    zb_names_struct_t *nam = ZB_GET_BUF_PARAM(bdu ,zb_names_struct_t);
+    nam->name_first = 0xCC;
+    nam->name_second = 0xBB;
+    send_data(bdu );
+    // send_data((zb_buf_t *)ZB_BUF_FROM_REF(param));
   }
   else
   {

@@ -1,0 +1,11 @@
+*.o
+*.d
+*.a
+*.elf
+*.un~
+*.elf.map
+*.bin
+*.c~
+*.swp
+*.swo
+*.gitignore~

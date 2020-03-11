@@ -75,6 +75,15 @@ zb_ieee_addr_t g_ieee_addr = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05};
 zb_uint8_t g_key[16] = { 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0, 0, 0, 0, 0, 0, 0, 0};
 
 
+typedef struct timedelay
+{
+  zb_uint16_t time;
+  zb_char_t name_device[7];
+} zb_time_delay_struct_t;
+
+int timeout_zc = 0;
+
+
 /*
   The test is: ZC starts PAN, ZR joins to it by association and send APS data packet, when ZC
   received packet, it sends packet to ZR, when ZR received packet, it sends
@@ -147,13 +156,6 @@ void zb_zdo_startup_complete(zb_uint8_t param) ZB_CALLBACK
 /*
    Trivial test: dump all APS data received
  */
-typedef struct names
-{
-  zb_uint16_t name_first;
-  zb_uint8_t name_second; 
-  
-} zb_names_struct_t;
-
 
 
 void data_indication(zb_uint8_t param) ZB_CALLBACK
@@ -181,6 +183,11 @@ void data_indication(zb_uint8_t param) ZB_CALLBACK
     }
   }
 
+  zb_time_delay_struct_t * del = (zb_time_delay_struct_t*) ptr;
+  timeout_zc =( del->time) + 1;
+
+
+
 #ifdef APS_RETRANSMIT_TEST
   zb_free_buf(asdu);
 #else
@@ -199,8 +206,9 @@ static void zc_send_data(zb_buf_t *buf, zb_uint16_t addr)
     zb_apsde_data_req_t *req;
     zb_uint8_t *ptr = NULL;
     zb_short_t i;
+    zb_time_delay_struct_t *delay;
   
-    ZB_BUF_INITIAL_ALLOC(buf, ZB_TEST_DATA_SIZE, ptr);
+    ZB_BUF_INITIAL_ALLOC(buf, sizeof(zb_time_delay_struct_t), delay);
     req = ZB_GET_BUF_TAIL(buf, sizeof(zb_apsde_data_req_t));
     req->dst_addr.addr_short = addr; /* send to ZR */
     req->addr_mode = ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
@@ -210,16 +218,15 @@ static void zc_send_data(zb_buf_t *buf, zb_uint16_t addr)
     req->src_endpoint = 10;
     req->dst_endpoint = 10;  
     buf->u.hdr.handle = 0x11;  
-    for (i = 0 ; i < ZB_TEST_DATA_SIZE ; ++i)
-    {
-      ptr[i] = i % 32 + '0';
-    }
+    
     TRACE_MSG(TRACE_APS2, "Sending apsde_data.request", (FMT__0));  
 
-
+    delay->time = timeout_zc;
+    ZB_MEMCPY(delay->name_device,"I_am_Zc",7);
+    
    
-
-    ZB_SCHEDULE_CALLBACK(zb_apsde_data_request, ZB_REF_FROM_BUF(buf));
+     ZB_SCHEDULE_ALARM (zb_apsde_data_request,ZB_REF_FROM_BUF(buf), timeout_zc * ZB_TIME_ONE_SECOND);
+   // ZB_SCHEDULE_CALLBACK(zb_apsde_data_request, ZB_REF_FROM_BUF(buf));
   }
 #endif
 

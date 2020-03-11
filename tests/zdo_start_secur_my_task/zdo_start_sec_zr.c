@@ -78,6 +78,14 @@ void data_indication(zb_uint8_t param) ZB_CALLBACK;
 
 zb_ieee_addr_t g_ieee_addr = {0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01};
 
+typedef struct timedelay
+{
+  zb_uint16_t time;
+  zb_char_t name_device[7];
+} zb_time_delay_struct_t;
+
+int timeout_zr = 0;
+
 
 MAIN()
 {
@@ -117,11 +125,7 @@ MAIN()
   MAIN_RETURN(0);
 }
 
-typedef struct names
-{
-  zb_char_t name_first[10];
-  zb_char_t name_second[10]; 
-} zb_names_struct_t;
+
 
 
 void zb_zdo_startup_complete(zb_uint8_t param) ZB_CALLBACK
@@ -151,9 +155,9 @@ static void send_data(zb_buf_t *buf)
   zb_apsde_data_req_t *req;
   zb_uint8_t *ptr = NULL;
   zb_short_t i;
-  zb_names_struct_t *name;
+  zb_time_delay_struct_t *delay;
 
-  ZB_BUF_INITIAL_ALLOC(buf, sizeof(zb_names_struct_t), name);
+  ZB_BUF_INITIAL_ALLOC(buf, sizeof(zb_time_delay_struct_t), delay);
   req = ZB_GET_BUF_TAIL(buf, sizeof(zb_apsde_data_req_t));
   req->dst_addr.addr_short = 0; /* send to ZC */
   req->addr_mode = ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
@@ -165,8 +169,8 @@ static void send_data(zb_buf_t *buf)
 
   buf->u.hdr.handle = 0x11;
 
-  ZB_MEMCPY(name->name_first,"Dmitriy",7);
-  ZB_MEMCPY(name->name_second,"Komaristiy",10);
+  delay->time = timeout_zr;
+  ZB_MEMCPY(delay->name_device,"I_am_Zr",7);
 
 
 #if 0   /* test with wrong pan_id after join */
@@ -175,7 +179,8 @@ static void send_data(zb_buf_t *buf)
 #endif 													 
 
   TRACE_MSG(TRACE_APS2, "Sending apsde_data.request", (FMT__0));
-  ZB_SCHEDULE_CALLBACK(zb_apsde_data_request, ZB_REF_FROM_BUF(buf));
+  ZB_SCHEDULE_ALARM (zb_apsde_data_request,ZB_REF_FROM_BUF(buf), timeout_zr * ZB_TIME_ONE_SECOND);
+  //ZB_SCHEDULE_CALLBACK(zb_apsde_data_request, ZB_REF_FROM_BUF(buf));
 }
 
 #ifndef APS_RETRANSMIT_TEST
@@ -200,6 +205,9 @@ void data_indication(zb_uint8_t param)
                               (int)(i % 32 + '0'), (char)i % 32 + '0'));
     }
   }
+
+  zb_time_delay_struct_t * del = (zb_time_delay_struct_t*) ptr;
+  timeout_zr = (del->time) + 1;
 
   send_data(asdu);
 }
